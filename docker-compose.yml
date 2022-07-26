@@ -1,0 +1,96 @@
+version: "3.3"
+services:
+  nginx-proxy:
+    container_name: nginx-proxy
+    image: jwilder/nginx-proxy
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/vhostd:/etc/nginx/vhost.d
+      - ./nginx/html:/usr/share/nginx/html
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy
+    networks:
+      - app_nginx
+  letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    restart: always
+    environment:
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+    volumes:
+      - ./nginx/certs:/etc/nginx/certs:rw
+      - ./nginx/vhostd:/etc/nginx/vhost.d
+      - ./nginx/html:/usr/share/nginx/html
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - app_nginx
+  www1:
+    container_name: www1
+    image: nginx
+    restart: always
+    expose:
+      - 80
+    depends_on:
+      - nginx-proxy
+      - letsencrypt
+    volumes:
+      - ./nginx/config/api.yaguzgame.top.conf:/etc/nginx/conf.d/defualt.conf
+    environment:
+      - VIRTUAL_HOST=api.yafuzgame.top
+      - LETSENCRYPT_HOST=api.yafuzgame.top
+      - LETSENCRYPT_EMAIL=yafuzgamedo@gmail.com
+    networks:
+      - app_nginx
+      - app_backend
+  www2:
+    container_name: www2
+    image: nginx
+    restart: always
+    expose:
+      - 80
+    depends_on:
+      - nginx-proxy
+      - letsencrypt
+    volumes:
+      - ./nginx/config/app.yafuzgame.io.conf:/etc/nginx/conf.d/defualt.conf
+    environment:
+      - VIRTUAL_HOST=app.yafuzgame.io
+      - LETSENCRYPT_HOST=app.yafuzgame.io
+      - LETSENCRYPT_EMAIL=yafuzgamedo@gmail.com
+    networks:
+      - app_nginx
+      - app_front_v1
+  www3:
+    container_name: www3
+    image: nginx
+    restart: always
+    expose:
+      - 80
+    depends_on:
+      - nginx-proxy
+      - letsencrypt
+    volumes:
+      - ./nginx/config/wallet.yafuzgame.io.conf:/etc/nginx/conf.d/defualt.conf
+    environment:
+      - VIRTUAL_HOST=wallet.yafuzgame.io
+      - LETSENCRYPT_HOST=wallet.yafuzgame.io
+      - LETSENCRYPT_EMAIL=yafuzgamedo@gmail.com
+    networks:
+      - app_nginx
+      - app_wallet
+networks:
+  app_nginx:
+    driver: bridge
+  app_backend:
+    external:
+      name: app_backend
+  app_front_v1:
+    external:
+      name: app_front_v1
+  app_wallet:
+    external:
+      name: app_wallet
